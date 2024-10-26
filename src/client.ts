@@ -38,40 +38,55 @@ export class ComfyUIClient {
     this.clientId = clientId;
   }
 
-  connect() {
-    return new Promise<void>(async (resolve) => {
+  connect(timeoutMs: number = 20000) {
+    return new Promise<void>((resolve, reject) => {
+      const connectWebSocket = () => {
+        const url = `ws://${this.serverAddress}/ws?clientId=${this.clientId}`;
+
+        logger.info(`Connecting to url: ${url}`);
+
+        this.ws = new WebSocket(url, {
+          perMessageDeflate: false,
+        });
+
+        const timeoutId = setTimeout(() => {
+          if (this.ws?.readyState !== WebSocket.OPEN) {
+            this.ws?.close();
+            reject(new Error('WebSocket connection timeout'));
+          }
+        }, timeoutMs);
+
+        this.ws.on('open', () => {
+          clearTimeout(timeoutId);
+          logger.info('Connection open');
+          resolve();
+        });
+
+        this.ws.on('close', () => {
+          clearTimeout(timeoutId);
+          logger.info('Connection closed');
+        });
+
+        this.ws.on('error', (err) => {
+          clearTimeout(timeoutId);
+          logger.error({ err }, 'WebSockets error');
+          reject(err);
+        });
+
+        this.ws.on('message', (data, isBinary) => {
+          if (isBinary) {
+            logger.debug('Received binary data');
+          } else {
+            logger.debug('Received data: %s', data.toString());
+          }
+        });
+      };
+
       if (this.ws) {
-        await this.disconnect();
+        this.disconnect().then(connectWebSocket).catch(reject);
+      } else {
+        connectWebSocket();
       }
-
-      const url = `ws://${this.serverAddress}/ws?clientId=${this.clientId}`;
-
-      logger.info(`Connecting to url: ${url}`);
-
-      this.ws = new WebSocket(url, {
-        perMessageDeflate: false,
-      });
-
-      this.ws.on('open', () => {
-        logger.info('Connection open');
-        resolve();
-      });
-
-      this.ws.on('close', () => {
-        logger.info('Connection closed');
-      });
-
-      this.ws.on('error', (err) => {
-        logger.error({ err }, 'WebSockets error');
-      });
-
-      this.ws.on('message', (data, isBinary) => {
-        if (isBinary) {
-          logger.debug('Received binary data');
-        } else {
-          logger.debug('Received data: %s', data.toString());
-        }
-      });
     });
   }
 
