@@ -41,7 +41,7 @@ export class ComfyUIClient {
   connect(timeoutMs: number = 20000) {
     return new Promise<void>((resolve, reject) => {
       const connectWebSocket = () => {
-        const url = `ws://${this.serverAddress}/ws?clientId=${this.clientId}`;
+        const url = `wss://${this.serverAddress}/ws?clientId=${this.clientId}`;
 
         logger.info(`Connecting to url: ${url}`);
 
