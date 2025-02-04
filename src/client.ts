@@ -4,6 +4,7 @@ import { join } from 'path';
 import pino from 'pino';
 import WebSocket from 'ws';
 import FormData from 'form-data';
+import { Readable } from 'stream';
 
 import type {
   EditHistoryRequest,
@@ -31,6 +32,7 @@ const logger = pino({
 export class ComfyUIClient {
   public serverAddress: string;
   public clientId: string;
+  private protocol: 'http:' | 'https:' = 'http:';  // Default to http
 
   protected ws?: WebSocket;
 
@@ -42,7 +44,14 @@ export class ComfyUIClient {
   connect(timeoutMs: number = 20000) {
     return new Promise<void>((resolve, reject) => {
       const connectWebSocket = () => {
-        const url = `wss://${this.serverAddress}/ws?clientId=${this.clientId}`;
+        // Determine protocol based on whether the server address includes 'localhost' or is an IP
+        this.protocol = this.serverAddress.includes('localhost') || 
+                       this.serverAddress.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/) 
+                       ? 'http:' 
+                       : 'https:';
+        
+        const wsProtocol = this.protocol === 'https:' ? 'wss:' : 'ws:';
+        const url = `${wsProtocol}//${this.serverAddress}/ws?clientId=${this.clientId}`;
 
         logger.info(`Connecting to url: ${url}`);
 
@@ -98,8 +107,12 @@ export class ComfyUIClient {
     }
   }
 
+  private getHttpUrl(path: string): string {
+    return `${this.protocol}//${this.serverAddress}${path}`;
+  }
+
   async getEmbeddings(): Promise<string[]> {
-    const res = await fetch(`http://${this.serverAddress}/embeddings`);
+    const res = await fetch(this.getHttpUrl('/embeddings'));
 
     const json: string[] | ResponseError = await res.json();
 
@@ -111,7 +124,7 @@ export class ComfyUIClient {
   }
 
   async getExtensions(): Promise<string[]> {
-    const res = await fetch(`http://${this.serverAddress}/extensions`);
+    const res = await fetch(this.getHttpUrl('/extensions'));
 
     const json: string[] | ResponseError = await res.json();
 
@@ -123,7 +136,7 @@ export class ComfyUIClient {
   }
 
   async queuePrompt(prompt: Prompt): Promise<QueuePromptResult> {
-    const res = await fetch(`http://${this.serverAddress}/prompt`, {
+    const res = await fetch(this.getHttpUrl('/prompt'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -145,7 +158,7 @@ export class ComfyUIClient {
   }
 
   async interrupt(): Promise<void> {
-    const res = await fetch(`http://${this.serverAddress}/interrupt`, {
+    const res = await fetch(this.getHttpUrl('/interrupt'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -161,7 +174,7 @@ export class ComfyUIClient {
   }
 
   async editHistory(params: EditHistoryRequest): Promise<void> {
-    const res = await fetch(`http://${this.serverAddress}/history`, {
+    const res = await fetch(this.getHttpUrl('/history'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -177,41 +190,77 @@ export class ComfyUIClient {
     }
   }
 
+  private getImageMimeType(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'bmp':
+        return 'image/bmp';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   async uploadImage(
     image: Buffer,
     filename: string,
     overwrite?: boolean,
   ): Promise<UploadImageResult> {
-    const formData = new FormData();
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+    const contentType = this.getImageMimeType(filename);
     
-    // Create blob with proper mime type and filename
-    const blob = new Blob([image], { type: 'image/png' }); // or detect mime type from filename
-    formData.append('image', blob, {
-      filename,
-      contentType: 'image/png', // adjust based on your image type
-    });
-  
+    // Construct multipart form-data manually
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="image"; filename="${filename}"\r\n`;
+    body += `Content-Type: ${contentType}\r\n\r\n`;
+    
+    // Combine the body parts into a single buffer
+    const bodyStart = Buffer.from(body, 'utf-8');
+    const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+    
     if (overwrite !== undefined) {
-      formData.append('overwrite', overwrite.toString());
+      body += `--${boundary}\r\n`;
+      body += 'Content-Disposition: form-data; name="overwrite"\r\n\r\n';
+      body += `${overwrite}\r\n`;
     }
-  
-    const res = await fetch(`http://${this.serverAddress}/upload/image`, {
+    
+    // Combine all parts into a single buffer
+    const requestBody = Buffer.concat([
+      bodyStart,
+      image,
+      bodyEnd
+    ]);
+
+    const res = await fetch(this.getHttpUrl('/upload/image'), {
       method: 'POST',
-      body: formData,
+      body: requestBody,
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
     });
-  
+
     if (!res.ok) {
       throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`);
     }
-  
+
     const json: UploadImageResult | ResponseError = await res.json();
-  
+
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
     }
-  
+
     return json;
   }
+
   async uploadMask(
     image: Buffer,
     filename: string,
@@ -226,9 +275,9 @@ export class ComfyUIClient {
       formData.append('overwrite', overwrite.toString());
     }
 
-    const res = await fetch(`http://${this.serverAddress}/upload/mask`, {
+    const res = await fetch(this.getHttpUrl('/upload/mask'), {
       method: 'POST',
-      body: formData,
+      body: formData as unknown as BodyInit,
     });
 
     const json: UploadImageResult | ResponseError = await res.json();
@@ -246,7 +295,7 @@ export class ComfyUIClient {
     type: string,
   ): Promise<Blob> {
     const res = await fetch(
-      `http://${this.serverAddress}/view?` +
+      this.getHttpUrl('/view?') +
         new URLSearchParams({
           filename,
           subfolder,
@@ -263,7 +312,7 @@ export class ComfyUIClient {
     filename: string,
   ): Promise<ViewMetadataResponse> {
     const res = await fetch(
-      `http://${this.serverAddress}/view_metadata/${folderName}?filename=${filename}`,
+      this.getHttpUrl('/view_metadata/') + folderName + '?filename=' + filename,
     );
 
     const json: ViewMetadataResponse | ResponseError = await res.json();
@@ -276,7 +325,7 @@ export class ComfyUIClient {
   }
 
   async getSystemStats(): Promise<SystemStatsResponse> {
-    const res = await fetch(`http://${this.serverAddress}/system_stats`);
+    const res = await fetch(this.getHttpUrl('/system_stats'));
 
     const json: SystemStatsResponse | ResponseError = await res.json();
 
@@ -288,7 +337,7 @@ export class ComfyUIClient {
   }
 
   async getPrompt(): Promise<PromptQueueResponse> {
-    const res = await fetch(`http://${this.serverAddress}/prompt`);
+    const res = await fetch(this.getHttpUrl('/prompt'));
 
     const json: PromptQueueResponse | ResponseError = await res.json();
 
@@ -301,8 +350,8 @@ export class ComfyUIClient {
 
   async getObjectInfo(nodeClass?: string): Promise<ObjectInfoResponse> {
     const res = await fetch(
-      `http://${this.serverAddress}/object_info` +
-        (nodeClass ? `/${nodeClass}` : ''),
+      this.getHttpUrl('/object_info') +
+        (nodeClass ? '/' + nodeClass : ''),
     );
 
     const json: ObjectInfoResponse | ResponseError = await res.json();
@@ -316,7 +365,7 @@ export class ComfyUIClient {
 
   async getHistory(promptId?: string): Promise<HistoryResult> {
     const res = await fetch(
-      `http://${this.serverAddress}/history` + (promptId ? `/${promptId}` : ''),
+      this.getHttpUrl('/history') + (promptId ? '/' + promptId : ''),
     );
 
     const json: HistoryResult | ResponseError = await res.json();
@@ -329,7 +378,7 @@ export class ComfyUIClient {
   }
 
   async getQueue(): Promise<QueueResponse> {
-    const res = await fetch(`http://${this.serverAddress}/queue`);
+    const res = await fetch(this.getHttpUrl('/queue'));
 
     const json: QueueResponse | ResponseError = await res.json();
 
