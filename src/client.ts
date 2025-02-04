@@ -3,6 +3,7 @@ import { join } from 'path';
 
 import pino from 'pino';
 import WebSocket from 'ws';
+import FormData from 'form-data';
 
 import type {
   EditHistoryRequest,
@@ -182,26 +183,35 @@ export class ComfyUIClient {
     overwrite?: boolean,
   ): Promise<UploadImageResult> {
     const formData = new FormData();
-    formData.append('image', new Blob([image]), filename);
-
+    
+    // Create blob with proper mime type and filename
+    const blob = new Blob([image], { type: 'image/png' }); // or detect mime type from filename
+    formData.append('image', blob, {
+      filename,
+      contentType: 'image/png', // adjust based on your image type
+    });
+  
     if (overwrite !== undefined) {
       formData.append('overwrite', overwrite.toString());
     }
-
+  
     const res = await fetch(`http://${this.serverAddress}/upload/image`, {
       method: 'POST',
       body: formData,
     });
-
+  
+    if (!res.ok) {
+      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`);
+    }
+  
     const json: UploadImageResult | ResponseError = await res.json();
-
+  
     if ('error' in json) {
       throw new Error(JSON.stringify(json));
     }
-
+  
     return json;
   }
-
   async uploadMask(
     image: Buffer,
     filename: string,
