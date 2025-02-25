@@ -39,12 +39,15 @@ var import_promises = require("fs/promises");
 var import_path = require("path");
 var import_pino = __toESM(require("pino"));
 var import_ws = __toESM(require("ws"));
+var import_form_data = __toESM(require("form-data"));
 var logger = (0, import_pino.default)({
   level: "info"
 });
 var ComfyUIClient = class {
   serverAddress;
   clientId;
+  protocol = "http:";
+  // Default to http
   ws;
   constructor(serverAddress, clientId) {
     this.serverAddress = serverAddress;
@@ -53,7 +56,9 @@ var ComfyUIClient = class {
   connect(timeoutMs = 2e4) {
     return new Promise((resolve, reject) => {
       const connectWebSocket = () => {
-        const url = `ws://${this.serverAddress}/ws?clientId=${this.clientId}`;
+        this.protocol = this.serverAddress.includes("localhost") || this.serverAddress.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/) ? "http:" : "https:";
+        const wsProtocol = this.protocol === "https:" ? "wss:" : "ws:";
+        const url = `${wsProtocol}//${this.serverAddress}/ws?clientId=${this.clientId}`;
         logger.info(`Connecting to url: ${url}`);
         this.ws = new import_ws.default(url, {
           perMessageDeflate: false
@@ -99,8 +104,11 @@ var ComfyUIClient = class {
       this.ws = void 0;
     }
   }
+  getHttpUrl(path) {
+    return `${this.protocol}//${this.serverAddress}${path}`;
+  }
   async getEmbeddings() {
-    const res = await fetch(`http://${this.serverAddress}/embeddings`);
+    const res = await fetch(this.getHttpUrl("/embeddings"));
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));
@@ -108,7 +116,7 @@ var ComfyUIClient = class {
     return json;
   }
   async getExtensions() {
-    const res = await fetch(`http://${this.serverAddress}/extensions`);
+    const res = await fetch(this.getHttpUrl("/extensions"));
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));
@@ -116,7 +124,7 @@ var ComfyUIClient = class {
     return json;
   }
   async queuePrompt(prompt) {
-    const res = await fetch(`http://${this.serverAddress}/prompt`, {
+    const res = await fetch(this.getHttpUrl("/prompt"), {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -134,7 +142,7 @@ var ComfyUIClient = class {
     return json;
   }
   async interrupt() {
-    const res = await fetch(`http://${this.serverAddress}/interrupt`, {
+    const res = await fetch(this.getHttpUrl("/interrupt"), {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -147,7 +155,7 @@ var ComfyUIClient = class {
     }
   }
   async editHistory(params) {
-    const res = await fetch(`http://${this.serverAddress}/history`, {
+    const res = await fetch(this.getHttpUrl("/history"), {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -160,16 +168,61 @@ var ComfyUIClient = class {
       throw new Error(JSON.stringify(json));
     }
   }
-  async uploadImage(image, filename, overwrite) {
-    const formData = new FormData();
-    formData.append("image", new Blob([image]), filename);
-    if (overwrite !== void 0) {
-      formData.append("overwrite", overwrite.toString());
+  getImageMimeType(filename) {
+    const ext = filename.toLowerCase().split(".").pop();
+    switch (ext) {
+      case "png":
+        return "image/png";
+      case "jpg":
+      case "jpeg":
+        return "image/jpeg";
+      case "gif":
+        return "image/gif";
+      case "webp":
+        return "image/webp";
+      case "bmp":
+        return "image/bmp";
+      default:
+        return "application/octet-stream";
     }
-    const res = await fetch(`http://${this.serverAddress}/upload/image`, {
+  }
+  async uploadImage(image, filename, overwrite) {
+    const boundary = "----WebKitFormBoundary" + Math.random().toString(36).substring(2);
+    const contentType = this.getImageMimeType(filename);
+    let body = "";
+    body += `--${boundary}\r
+`;
+    body += `Content-Disposition: form-data; name="image"; filename="${filename}"\r
+`;
+    body += `Content-Type: ${contentType}\r
+\r
+`;
+    const bodyStart = Buffer.from(body, "utf-8");
+    const bodyEnd = Buffer.from(`\r
+--${boundary}--\r
+`, "utf-8");
+    if (overwrite !== void 0) {
+      body += `--${boundary}\r
+`;
+      body += 'Content-Disposition: form-data; name="overwrite"\r\n\r\n';
+      body += `${overwrite}\r
+`;
+    }
+    const requestBody = Buffer.concat([
+      bodyStart,
+      image,
+      bodyEnd
+    ]);
+    const res = await fetch(this.getHttpUrl("/upload/image"), {
       method: "POST",
-      body: formData
+      body: requestBody,
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${boundary}`
+      }
     });
+    if (!res.ok) {
+      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`);
+    }
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));
@@ -177,13 +230,13 @@ var ComfyUIClient = class {
     return json;
   }
   async uploadMask(image, filename, originalRef, overwrite) {
-    const formData = new FormData();
+    const formData = new import_form_data.default();
     formData.append("image", new Blob([image]), filename);
     formData.append("originalRef", JSON.stringify(originalRef));
     if (overwrite !== void 0) {
       formData.append("overwrite", overwrite.toString());
     }
-    const res = await fetch(`http://${this.serverAddress}/upload/mask`, {
+    const res = await fetch(this.getHttpUrl("/upload/mask"), {
       method: "POST",
       body: formData
     });
@@ -195,7 +248,7 @@ var ComfyUIClient = class {
   }
   async getImage(filename, subfolder, type) {
     const res = await fetch(
-      `http://${this.serverAddress}/view?` + new URLSearchParams({
+      this.getHttpUrl("/view?") + new URLSearchParams({
         filename,
         subfolder,
         type
@@ -206,7 +259,7 @@ var ComfyUIClient = class {
   }
   async viewMetadata(folderName, filename) {
     const res = await fetch(
-      `http://${this.serverAddress}/view_metadata/${folderName}?filename=${filename}`
+      this.getHttpUrl("/view_metadata/") + folderName + "?filename=" + filename
     );
     const json = await res.json();
     if ("error" in json) {
@@ -215,7 +268,7 @@ var ComfyUIClient = class {
     return json;
   }
   async getSystemStats() {
-    const res = await fetch(`http://${this.serverAddress}/system_stats`);
+    const res = await fetch(this.getHttpUrl("/system_stats"));
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));
@@ -223,7 +276,7 @@ var ComfyUIClient = class {
     return json;
   }
   async getPrompt() {
-    const res = await fetch(`http://${this.serverAddress}/prompt`);
+    const res = await fetch(this.getHttpUrl("/prompt"));
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));
@@ -232,7 +285,7 @@ var ComfyUIClient = class {
   }
   async getObjectInfo(nodeClass) {
     const res = await fetch(
-      `http://${this.serverAddress}/object_info` + (nodeClass ? `/${nodeClass}` : "")
+      this.getHttpUrl("/object_info") + (nodeClass ? "/" + nodeClass : "")
     );
     const json = await res.json();
     if ("error" in json) {
@@ -242,7 +295,7 @@ var ComfyUIClient = class {
   }
   async getHistory(promptId) {
     const res = await fetch(
-      `http://${this.serverAddress}/history` + (promptId ? `/${promptId}` : "")
+      this.getHttpUrl("/history") + (promptId ? "/" + promptId : "")
     );
     const json = await res.json();
     if ("error" in json) {
@@ -251,7 +304,7 @@ var ComfyUIClient = class {
     return json;
   }
   async getQueue() {
-    const res = await fetch(`http://${this.serverAddress}/queue`);
+    const res = await fetch(this.getHttpUrl("/queue"));
     const json = await res.json();
     if ("error" in json) {
       throw new Error(JSON.stringify(json));

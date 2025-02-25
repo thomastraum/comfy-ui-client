@@ -108,15 +108,18 @@ type FolderName = 'checkpoints' | 'configs' | 'loras' | 'vae' | 'clip' | 'unet' 
 declare class ComfyUIClient {
     serverAddress: string;
     clientId: string;
+    private protocol;
     protected ws?: WebSocket;
     constructor(serverAddress: string, clientId: string);
     connect(timeoutMs?: number): Promise<void>;
     disconnect(): Promise<void>;
+    private getHttpUrl;
     getEmbeddings(): Promise<string[]>;
     getExtensions(): Promise<string[]>;
     queuePrompt(prompt: Prompt): Promise<QueuePromptResult>;
     interrupt(): Promise<void>;
     editHistory(params: EditHistoryRequest): Promise<void>;
+    private getImageMimeType;
     uploadImage(image: Buffer, filename: string, overwrite?: boolean): Promise<UploadImageResult>;
     uploadMask(image: Buffer, filename: string, originalRef: ImageRef, overwrite?: boolean): Promise<UploadImageResult>;
     getImage(filename: string, subfolder: string, type: string): Promise<Blob>;

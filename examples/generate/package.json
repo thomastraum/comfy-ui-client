@@ -3,7 +3,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "txt2img": "node dist/main.js txt2img",
+    "upload-image": "node dist/main.js upload-image"
   },
   "dependencies": {
     "comfy-ui-client": "workspace:*",

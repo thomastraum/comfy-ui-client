@@ -1,3 +1,25 @@
+
+
+
+to test
+
+cd examples/generate
+
+npm install
+npm run build
+npm start txt2img 
+
+
+
+
+
+
+
+
+
+
+
+
 # ComfyUI Client
 
 [![npm][badge-version]][npm]

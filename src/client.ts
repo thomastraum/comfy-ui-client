@@ -3,6 +3,8 @@ import { join } from 'path';
 
 import pino from 'pino';
 import WebSocket from 'ws';
+import FormData from 'form-data';
+import { Readable } from 'stream';
 
 import type {
   EditHistoryRequest,
@@ -201,22 +203,67 @@ export class ComfyUIClient {
     }
   }
 
+  private getImageMimeType(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'bmp':
+        return 'image/bmp';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   async uploadImage(
     image: Buffer,
     filename: string,
     overwrite?: boolean,
   ): Promise<UploadImageResult> {
-    const formData = new FormData();
-    formData.append('image', new Blob([image]), filename);
-
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+    const contentType = this.getImageMimeType(filename);
+    
+    // Construct multipart form-data manually
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="image"; filename="${filename}"\r\n`;
+    body += `Content-Type: ${contentType}\r\n\r\n`;
+    
+    // Combine the body parts into a single buffer
+    const bodyStart = Buffer.from(body, 'utf-8');
+    const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+    
     if (overwrite !== undefined) {
-      formData.append('overwrite', overwrite.toString());
+      body += `--${boundary}\r\n`;
+      body += 'Content-Disposition: form-data; name="overwrite"\r\n\r\n';
+      body += `${overwrite}\r\n`;
     }
+    
+    // Combine all parts into a single buffer
+    const requestBody = Buffer.concat([
+      bodyStart,
+      image,
+      bodyEnd
+    ]);
 
     const res = await fetch(this.getApiUrl('/upload/image'), {
       method: 'POST',
-      body: formData,
+      body: requestBody,
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
     });
+
+    if (!res.ok) {
+      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`);
+    }
 
     const json: UploadImageResult | ResponseError = await res.json();
 
@@ -243,7 +290,7 @@ export class ComfyUIClient {
 
     const res = await fetch(this.getApiUrl('/upload/mask'), {
       method: 'POST',
-      body: formData,
+      body: formData as unknown as BodyInit,
     });
 
     const json: UploadImageResult | ResponseError = await res.json();

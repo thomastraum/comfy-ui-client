@@ -42,12 +42,14 @@
     "prettier": "prettier --config .prettierrc --write ./src"
   },
   "dependencies": {
+    "form-data": "^4.0.1",
     "pino": "^8.14.2",
     "uuid": "^9.0.0",
     "ws": "^8.13.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.8",
+    "@types/form-data": "^2.5.2",
     "@types/node": "^18.11.14",
     "@types/uuid": "^9.0.2",
     "@types/ws": "^8.5.5",

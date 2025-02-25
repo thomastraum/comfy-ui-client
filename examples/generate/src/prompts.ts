@@ -20,7 +20,7 @@ export const exampleTxt2ImgPrompt = (): Prompt => {
     '4': {
       class_type: 'CheckpointLoaderSimple',
       inputs: {
-        ckpt_name: 'v1-5-pruned-emaonly.cpkt',
+        ckpt_name: 'v1-5-pruned-emaonly.safetensors',
       },
     },
     '5': {

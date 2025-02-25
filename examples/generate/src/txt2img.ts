@@ -4,7 +4,7 @@ import type { Prompt } from 'comfy-ui-client';
 
 // The ComfyUI server address
 // const SERVER_ADDRESS = '127.0.0.1:8188';
-const SERVER_ADDRESS = 'tm-8.tail95eb8.ts.net:8188';
+const SERVER_ADDRESS = 'thomastraum--example-comfyui-ui-dev.modal.run';
 
 export const txt2img = async (
   prompt: Prompt,
