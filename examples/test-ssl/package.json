@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm exec tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "test": "pnpm run build && pnpm start"
+  },
+  "dependencies": {
+    "comfy-ui-client": "workspace:*",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.2",
+    "typescript": "~5.0"
+  }
+}
