@@ -4,7 +4,7 @@ import { ComfyUIClient } from 'comfy-ui-client';
 import type { Prompt } from 'comfy-ui-client';
 
 // The ComfyUI server address
-const SERVER_ADDRESS = '127.0.0.1:8188';
+const SERVER_ADDRESS = 'tm-8-ubuntu.tail95eb8.ts.net';
 
 export const txt2img = async (
   prompt: Prompt,
