@@ -88,7 +88,7 @@ export class ComfyUIClient {
     const json: string[] | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -100,7 +100,7 @@ export class ComfyUIClient {
     const json: string[] | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -122,7 +122,10 @@ export class ComfyUIClient {
     const json: QueuePromptResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
+    }
+    if ('node_errors' in json) {
+      throw json;
     }
 
     return json;
@@ -140,7 +143,7 @@ export class ComfyUIClient {
     const json: QueuePromptResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
   }
 
@@ -157,7 +160,7 @@ export class ComfyUIClient {
     const json: QueuePromptResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
   }
 
@@ -181,7 +184,7 @@ export class ComfyUIClient {
     const json: UploadImageResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -209,7 +212,7 @@ export class ComfyUIClient {
     const json: UploadImageResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -244,7 +247,7 @@ export class ComfyUIClient {
     const json: ViewMetadataResponse | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -256,7 +259,7 @@ export class ComfyUIClient {
     const json: SystemStatsResponse | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -268,7 +271,7 @@ export class ComfyUIClient {
     const json: PromptQueueResponse | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -283,7 +286,7 @@ export class ComfyUIClient {
     const json: ObjectInfoResponse | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -297,7 +300,7 @@ export class ComfyUIClient {
     const json: HistoryResult | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;
@@ -309,7 +312,7 @@ export class ComfyUIClient {
     const json: QueueResponse | ResponseError = await res.json();
 
     if ('error' in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
 
     return json;

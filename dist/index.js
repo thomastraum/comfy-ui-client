@@ -89,7 +89,7 @@ var ComfyUIClient = class {
     const res = await fetch(`http://${this.serverAddress}/embeddings`);
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -97,7 +97,7 @@ var ComfyUIClient = class {
     const res = await fetch(`http://${this.serverAddress}/extensions`);
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -115,7 +115,10 @@ var ComfyUIClient = class {
     });
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
+    }
+    if ("node_errors" in json) {
+      throw json;
     }
     return json;
   }
@@ -129,7 +132,7 @@ var ComfyUIClient = class {
     });
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
   }
   async editHistory(params) {
@@ -143,7 +146,7 @@ var ComfyUIClient = class {
     });
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
   }
   async uploadImage(image, filename, overwrite) {
@@ -158,7 +161,7 @@ var ComfyUIClient = class {
     });
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -175,7 +178,7 @@ var ComfyUIClient = class {
     });
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -196,7 +199,7 @@ var ComfyUIClient = class {
     );
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -204,7 +207,7 @@ var ComfyUIClient = class {
     const res = await fetch(`http://${this.serverAddress}/system_stats`);
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -212,7 +215,7 @@ var ComfyUIClient = class {
     const res = await fetch(`http://${this.serverAddress}/prompt`);
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -222,7 +225,7 @@ var ComfyUIClient = class {
     );
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -232,7 +235,7 @@ var ComfyUIClient = class {
     );
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
@@ -240,7 +243,7 @@ var ComfyUIClient = class {
     const res = await fetch(`http://${this.serverAddress}/queue`);
     const json = await res.json();
     if ("error" in json) {
-      throw new Error(JSON.stringify(json));
+      throw json;
     }
     return json;
   }
