@@ -10,6 +10,10 @@ interface Prompt {
     [nodeId: string]: {
         inputs: Record<string, any>;
         class_type: string;
+        _meta?: {
+            title: string;
+            visible?: boolean;
+        };
     };
 }
 interface ComfyUIError {

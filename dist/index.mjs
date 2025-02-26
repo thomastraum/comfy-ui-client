@@ -81,7 +81,8 @@ var ComfyUIClient = class {
     if ("error" in json) {
       throw json;
     }
-    if ("node_errors" in json) {
+    logger.info("Queue prompt result: %s", JSON.stringify(json));
+    if ("node_errors" in json && Object.keys(json.node_errors).length > 0) {
       throw json;
     }
     return json;

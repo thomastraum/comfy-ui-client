@@ -11,6 +11,10 @@ export interface Prompt {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputs: Record<string, any>;
     class_type: string;
+    _meta?: {
+      title: string;
+      visible?: boolean;
+    };
   };
 }
 

@@ -5,6 +5,7 @@ import {
   exampleTxt2ImgPrompt,
   exampleTxt2ImgLoraPrompt,
   complexPrompt,
+  exampleSdxlPrompt,
 } from './prompts.js';
 
 program
@@ -60,5 +61,15 @@ program.command('complex').action(async () => {
     handleError(error);
   }
 });
+
+program.command('exampleSdxlPrompt').action(async () => {
+  try {
+    const prompt = await exampleSdxlPrompt();
+    await txt2img(prompt, './tmp');
+  } catch (error) {
+    handleError(error);
+  }
+});
+
 
 program.parse();
